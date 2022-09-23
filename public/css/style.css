@@ -1,0 +1,126 @@
+
+/* sign in FORM */
+
+
+body {
+	font-size: 1.5rem !important;	
+	font-family: "�g�[�L���O" !important;
+}
+
+.form-control {
+	font-size: 1.5rem !important;
+}
+
+.btn {
+	font-size: 1.5rem !important;
+}
+.main-container {
+	display: flex;
+	flex-direction:column;
+	width: 100%;
+	height: 100%;
+  	justify-content: top;
+  	max-width: 600px !important;
+}
+
+.main-box {
+    width: 500px;
+    margin: 0 auto;
+    background-color:#f3f3f3;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+    padding: 10px 10px;
+    justify-content: center;
+    align-items: center;
+}
+
+.main-form .form-control {
+    position: relative;
+    box-sizing: border-box;
+    height: auto;
+    padding: 10px;
+    font-size: 16px;
+}
+
+
+.fit-btn {
+	width: 100%;
+	
+}
+
+.basic_information {
+	 background-color:#f3f3f3;
+}
+
+.main-box .col {
+	text-align: center
+}
+
+.main-box .row {
+	padding: 10px;
+}
+
+.table td {
+	vertical-align: middle;
+}
+
+.mynav {
+	background-color: #41924B;
+    overflow: hidden;
+	height: 30px;
+	margin: 2px 0;
+}
+
+.mynav a{
+	color: #f2f2f2;
+    padding: 14px 16px !important;
+	text-decoration: none;
+	
+}
+
+.mynav a:hover {
+  color: gold;
+}
+
+.mynav ul li{
+    float: left !important;
+}
+
+.mynav ul {
+  list-style: none;
+  margin:5px 0px;
+padding:0px;
+}
+
+.mynav li {
+  width: 120px;
+  text-align: center;
+}
+ 
+.mynav-filter { 
+  width: auto;
+}
+ 
+ 
+.mynav li a {
+  text-decoration: none;
+}
+
+.mynav ul li:last-child {
+	float:right !important;
+}
+
+form {
+	margin-block-end: 0;
+}
+
+html {cursor: default;}
+
+.form-control::placeholder {
+	 color: #cccccc !important;
+}
+
+.monshin-question {
+	width: 100px !important;	
+}
+
