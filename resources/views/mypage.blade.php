@@ -114,11 +114,7 @@ $(function() {
 			@endphp
 			<tr>
 				<td>{{ date("Y/m/d",strtotime($vaccination_date)) }}</td>
-				@if (env('LOCATION', '') == 'HIGASHINAEBO')
-				<td>コロナワクチン</td>
-				@else
 				<td>{{floor($item->vaccine_id/10)==1 ? 'ファイザー':'モデルナ'}}</td>
-				@endif
 				<td>{{$item->vaccine_id % 10}}回目</td>
 			</tr>
 		@endforeach
@@ -170,17 +166,6 @@ $(function() {
 		<span class="h3">マイページ</span>
 	</div>
 </div>
-@if (env('LOCATION', '') == 'HIGASHINAEBO') 
-<div class="row justify-content-center mb-2">
-	<div class="text-center">
-		当院に入荷するワクチンは<u><span style="color:red;">ファイザー製</span></u>と<u><span style="color:red;">モデルナ製</span></u>のワクチンになります。<br>
-				(支給されるワクチンは直前まで不明です)	<br>
-		当日用意されているワクチンを接種していただきます。<br>
-		    ワクチンの種類の<u><span style="color:red;">予約はお受けできません</span></u>。<br>
-	</div>
-</div>
-<p>
-@endif
 <div class="row mb-4 justify-content-center">
 	<div class="col-auto">
 		<span class="h3">予約情報</span>
@@ -210,11 +195,7 @@ $(function() {
 					</td>
 					<td>
 					@php
-                        if (env('LOCATION', '') == 'HIGASHINAEBO') {
-                            echo preg_replace('/ファイザー|モデルナ/', 'コロナワクチン', $reservation->vaccine_name);
-                        } else {
-							echo $reservation->vaccine_name;
-						}
+						echo $reservation->vaccine_name;
 					@endphp
 					</td>
 					<td>{{$reservation->status_desc}}</td>
