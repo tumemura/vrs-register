@@ -64,28 +64,47 @@ class MainController extends Controller
     
     public function status($small = false)
     {
+        $vaccines =  DB::table('vaccines')
+        ->orderBy('vaccine_id', 'asc')
+        ->get();
+
+        $vaccine_list = [];
+
+        foreach($vaccines as $vaccine) {
+            $firstReservationDate = "";
+
+            $firstFrame = DB::table('frames')
+                ->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)')
+                ->where('vaccine_id', $vaccine->vaccine_id)
+                ->where('category_id', 1)
+                ->whereColumn('vaccine_count', '>', 'reservation_count')
+                ->orderBy('start_at')
+                ->first();
+
+            $frames = \DB::table('frames');
+            $frames->selectRaw("sum(vaccine_count) as total, sum(reservation_count) as used");
+            $frames->where('category_id',1);
+            $frames->where('vaccine_id',$vaccine->vaccine_id);
+            $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
+            $summary = $frames->get()->first();
+            $available = empty($summary->total)? 0 :$summary->total - $summary->used;
+
+            if ($firstFrame) {
+                $firstReservationDate = date("Y/m/d", strtotime($firstFrame->start_at));
+            }
+            $vaccine_list[$vaccine->vaccine_id]['name'] = $vaccine->vaccine_name;
+            $vaccine_list[$vaccine->vaccine_id]['available'] = $available;
+            $vaccine_list[$vaccine->vaccine_id]['reservation_date'] = $firstReservationDate;
+        }
+
         $item = DB::table('site')->get()->first();
         
-        $data = DB::table('frames');
-        $data->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-        $data->where('vaccine_id', '14'); // ファイザー４回目
-        $data->where('category_id', 1); // Web予約
-        $data->whereColumn('vaccine_count', '>', 'reservation_count');
-        $data->orderBy('start_at');
-        $frames = $data->get();
-        $firstReservationDate = "";
-        foreach ($frames as $frame) {
-            $firstReservationDate = date("Y/m/d", strtotime($frame->start_at));
-            break;
-        }
-           
         return view('status', [
-            'reservation_available'=>$item->web_vaccine_14_reservation_limit,
-            'reservation_available_today'=>$item->web_vaccine_14_today_reservation_limit,
-            'first_reservation_date'=>$firstReservationDate,
+            'vaccine_list'=>$vaccine_list,
             'small'=>$small
         ]);
     }
+
 
     public function status2($small = false)
     {
@@ -374,7 +393,6 @@ class MainController extends Controller
         
         return redirect('/cc_missing', 307)->withInput();
     }
-    
 
     public function logout()
     {
@@ -404,7 +422,6 @@ class MainController extends Controller
         $query->whereColumn('vaccine_count', '>', 'reservation_count');
 
         $site = DB::table('site')->get()->first();
-        // 当日予約が可能な場合は当日の予約可否もカレンダー上に表示する
 
         $query->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');    
         $query->orderBy('start_at');
