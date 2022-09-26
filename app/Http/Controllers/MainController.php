@@ -61,7 +61,7 @@ class MainController extends Controller
        ];
         return view('splogin', $params);
     }
-    
+
     public function status($small = false)
     {
         $vaccines =  DB::table('vaccines')
@@ -106,63 +106,84 @@ class MainController extends Controller
     }
 
 
-    public function status2($small = false)
-    {
-        $item = DB::table('site')->get()->first();
-        
-        $data = DB::table('frames');
-        $data->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-        $data->where('vaccine_id', '24'); // モデルナ４回目
-        $data->where('category_id', 1); // Web予約
-        $data->whereColumn('vaccine_count', '>', 'reservation_count');
-        $data->orderBy('start_at');
-        $frames = $data->get();
-        $firstReservationDate = "";
-        foreach ($frames as $frame) {
-            $firstReservationDate = date("Y/m/d", strtotime($frame->start_at));
-            break;
-        }
-           
-        return view('status', [
-            'reservation_available'=>$item->web_vaccine_24_reservation_limit,
-            'reservation_available_today'=>$item->web_vaccine_24_today_reservation_limit,
-            'first_reservation_date'=>$firstReservationDate,
-            'small'=>$small
-        ]);
-    }
-    
     
     private function getDosageInterval($vaccine_id)
     {
-        $vaccines = DB::table('vaccines')
+        $vaccine = DB::table('vaccines')
         ->where('vaccine_id', $vaccine_id)
-        ->get();
-        return $vaccines->first()->dosage_interval;
+        ->first();
+        return $vaccine->dosage_interval;
     }
     
   
+
     // 前回接種日を計算する関数
     private function getPrevDosageAt($patient_id, $vaccine_id)
     {
         $patients = DB::table('patients')
-            ->where('patient_id', $patient_id)
-            ->first();
+        ->where('patient_id', $patient_id)
+        ->first();
+        
+        // 2価ワクチンは直近の接種日からの日数
+        if ($vaccine_id %10 == 9) { 
+            $prevDoseDate =  "";   
+            if (!empty($patients->second_dose_date)) {
+                $prevDoseDate = $patients->second_dose_date;
+            }
+            if (!empty($patients->third_dose_date)) {
+                $prevDoseDate = $patients->third_dose_date;
+            }
+    
+            $reservation = DB::table('reservations')
+                ->join('frames', 'reservations.frame_id', '=', 'frames.frame_id')
+                ->where('patient_id', $patient_id)
+                ->where('status_code', '!=', 3)
+                ->orderBy('frames.start_at','desc')
+                ->first();
+
+            if ($reservation) {
+                $dateTime = explode(" ", $reservation->start_at);
+                if (empty($prevDoseDate)) {
+                    $prevDoseDate = $dateTime[0];
+                } else {
+                    $oldDate = new \Carbon($prevDoseDate);
+                    $newDate = new \Carbon($dateTime[0]);
+                    if ($newDate->gt($oldDate)) {
+                        $prevDoseDate = $dateTime[0];
+                    }
+                }
+            }
+
+            if (!empty($prevDoseDate))
+                return $prevDoseDate." 00:00:00";
+
+            return $prevDoseDate;
+        }
 
         if (($vaccine_id -1)%10 == 2) {
             // 3回目接種のみ、２回目接種日の入力があればそれを使用する
+            $patients = DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->first();
+
             if (!empty($patients->second_dose_date)) {
                 return $patients->second_dose_date;
             }
         } else if (($vaccine_id -1)%10 == 3) {
+            // ４回目接種のみ、３回目接種日の入力があればそれを使用する
+            $patients = DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->first();
+
             if (!empty($patients->third_dose_date)) {
                 return $patients->third_dose_date;
             }
         }
 
         if ($vaccine_id %10 > 1) {
-            foreach ([10,20] as $vaccine) {
+            foreach ([10,20,30] as $vaccine) {
                 $target = ($vaccine_id - 1)%10 + $vaccine;
- 
+
                 $reservations = DB::table('reservations')
                 ->join('frames', 'reservations.frame_id', '=', 'frames.frame_id')
                 ->where('patient_id', $patient_id)
@@ -171,16 +192,15 @@ class MainController extends Controller
                 ->get();
                 if (!$reservations->isEmpty()) {
                     $dateTime = explode(" ", $reservations->first()->start_at);
+                    Log::info('HELLO '.$dateTime[0]);
                     return $dateTime[0]." 00:00:00";
                 }
             }
         }
 
 
-
         return "";
     }
-
 
     public function afterFiveMonth($date)
     {
@@ -795,6 +815,11 @@ class MainController extends Controller
 
         foreach ($reservations as $reservation) {
             $reserved_dose = $reservation->vaccine_id%10;
+            if ($reserved_dose == 9) {
+                $start_dose = 9;
+                break;
+            }
+
             if ($reserved_dose >= $start_dose) {
                 $start_dose = $reserved_dose + 1;
             }
@@ -812,16 +837,11 @@ class MainController extends Controller
 
             $target_vaccines = [];
 
-            $reservation_found = false;
-            $prev_dose_avail = false;
+        
             foreach ($vaccines as $vaccine) {
                 $vaccine_id = $vaccine->vaccine_id;
                     
                 $target_vaccines[floor($vaccine_id/10)] = $vaccine_id;
-
-                if (!empty($this->getPrevDosageAt($patient_id, $vaccine_id))) {
-                    $prev_dose_avail = true;
-                }
             }
 
             foreach ($target_vaccines as $maker => $vaccine_id) {
@@ -863,18 +883,28 @@ class MainController extends Controller
                     $text .= "ファイザー";
                 } elseif ($maker == "2") {
                     $text .= "モデルナ";
+                } elseif ($maker == "3") {
+                    $text .= "ノババックス";
+                } elseif ($maker == "4") {
+                    $text .= "ファイザーオミクロン対応２価";
+                } elseif ($maker == "5") {
+                    $text .= "モデルナオミクロン対応２価";
                 }
                 
-                if ($target_dose == 1) {
-                    $text  .= "１，２";
-                } elseif ($target_dose == 2) {
-                    $text  .= "２";
-                } elseif ($target_dose == 3) {
-                    $text  .= "３";
-                } elseif ($target_dose == 4) {
-                    $text  .= "４";
+                if ($maker != "4" && $maker != "5") {
+                    if ($target_dose == 1) {
+                        $text  .= "１，２";
+                    } elseif ($target_dose == 2) {
+                        $text  .= "２";
+                    } elseif ($target_dose == 3) {
+                        $text  .= "３";
+                    } elseif ($target_dose == 4) {
+                        $text  .= "４";
+                    }
+                    $text .= "回目";
                 }
-                $text .= "回目を予約する";
+
+                $text .="を予約する";
                                 
                 $vaccine_list[] = ['vaccine_id'=>$vaccine_id,'text'=>$text];
 

@@ -17,9 +17,6 @@ use App\Http\Controllers\MainController;
 Route::get('/status',[MainController::class,'status']);
 Route::get('/status/{small?}',[MainController::class,'status']);
 
-Route::get('/status2',[MainController::class,'status2']);
-Route::get('/status2/{small?}',[MainController::class,'status2']);
-
 Route::group(['middleware' => ['maintenance']], function () {
 
     // 医療従事者用の専用ログイン
