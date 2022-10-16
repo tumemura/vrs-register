@@ -42,7 +42,7 @@ body {
 
 @foreach($vaccine_list as $vaccine_id => $value)
 
-<h2 style="text-align:center">{{ $value['name'] }}</h2>
+<h5 style="text-align:center">{{ $value['name'] }}</h5>
 <table class="table table-bordered table-sm">
 <colgroup class="basic_information" span="1" width="170px"></colgroup>
 <tbody>
