@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
 
+use Carbon\Carbon;
 
 class MainController extends Controller
 {
@@ -61,89 +62,132 @@ class MainController extends Controller
        ];
         return view('splogin', $params);
     }
-    
+
     public function status($small = false)
     {
+        $vaccines =  DB::table('vaccines')
+        ->orderBy('vaccine_id', 'asc')
+        ->get();
+
+        $vaccine_list = [];
+
+        foreach($vaccines as $vaccine) {
+            $firstReservationDate = "";
+
+            $firstFrame = DB::table('frames')
+                ->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)')
+                ->where('vaccine_id', $vaccine->vaccine_id)
+                ->where('category_id', 1)
+                ->whereColumn('vaccine_count', '>', 'reservation_count')
+                ->orderBy('start_at')
+                ->first();
+
+            $frames = \DB::table('frames');
+            $frames->selectRaw("sum(vaccine_count) as total, sum(reservation_count) as used");
+            $frames->where('category_id',1);
+            $frames->where('vaccine_id',$vaccine->vaccine_id);
+            $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
+            $summary = $frames->get()->first();
+            $available = empty($summary->total)? 0 :$summary->total - $summary->used;
+
+            if (!empty($summary->total)) {
+
+                if ($firstFrame) {
+                    $firstReservationDate = date("Y/m/d", strtotime($firstFrame->start_at));
+                }
+                $vaccine_list[$vaccine->vaccine_id]['name'] = $vaccine->vaccine_name;
+                $vaccine_list[$vaccine->vaccine_id]['available'] = $available;
+                $vaccine_list[$vaccine->vaccine_id]['first_reservation_date'] = $firstReservationDate;
+            }
+        }
+
         $item = DB::table('site')->get()->first();
         
-        $data = DB::table('frames');
-        $data->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-        $data->where('vaccine_id', '14'); // ファイザー４回目
-        $data->where('category_id', 1); // Web予約
-        $data->whereColumn('vaccine_count', '>', 'reservation_count');
-        $data->orderBy('start_at');
-        $frames = $data->get();
-        $firstReservationDate = "";
-        foreach ($frames as $frame) {
-            $firstReservationDate = date("Y/m/d", strtotime($frame->start_at));
-            break;
-        }
-           
         return view('status', [
-            'reservation_available'=>$item->web_vaccine_14_reservation_limit,
-            'reservation_available_today'=>$item->web_vaccine_14_today_reservation_limit,
-            'first_reservation_date'=>$firstReservationDate,
+            'vaccine_list'=>$vaccine_list,
             'small'=>$small
         ]);
     }
 
-    public function status2($small = false)
-    {
-        $item = DB::table('site')->get()->first();
-        
-        $data = DB::table('frames');
-        $data->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-        $data->where('vaccine_id', '24'); // モデルナ４回目
-        $data->where('category_id', 1); // Web予約
-        $data->whereColumn('vaccine_count', '>', 'reservation_count');
-        $data->orderBy('start_at');
-        $frames = $data->get();
-        $firstReservationDate = "";
-        foreach ($frames as $frame) {
-            $firstReservationDate = date("Y/m/d", strtotime($frame->start_at));
-            break;
-        }
-           
-        return view('status', [
-            'reservation_available'=>$item->web_vaccine_24_reservation_limit,
-            'reservation_available_today'=>$item->web_vaccine_24_today_reservation_limit,
-            'first_reservation_date'=>$firstReservationDate,
-            'small'=>$small
-        ]);
-    }
-    
+
     
     private function getDosageInterval($vaccine_id)
     {
-        $vaccines = DB::table('vaccines')
+        $vaccine = DB::table('vaccines')
         ->where('vaccine_id', $vaccine_id)
-        ->get();
-        return $vaccines->first()->dosage_interval;
+        ->first();
+        return $vaccine->dosage_interval;
     }
     
   
+
     // 前回接種日を計算する関数
     private function getPrevDosageAt($patient_id, $vaccine_id)
     {
         $patients = DB::table('patients')
-            ->where('patient_id', $patient_id)
-            ->first();
+        ->where('patient_id', $patient_id)
+        ->first();
+        
+        // 2価ワクチンは直近の接種日からの日数
+        if ($vaccine_id %10 == 9) { 
+            $prevDoseDate =  "";   
+            if (!empty($patients->second_dose_date)) {
+                $prevDoseDate =  explode(" ",$patients->second_dose_date)[0];
+            }
+            if (!empty($patients->third_dose_date)) {
+                $prevDoseDate =  explode(" ",$patients->third_dose_date)[0];
+            }
+    
+            $reservation = DB::table('reservations')
+                ->join('frames', 'reservations.frame_id', '=', 'frames.frame_id')
+                ->where('patient_id', $patient_id)
+                ->where('status_code', '!=', 3)
+                ->orderBy('frames.start_at','desc')
+                ->first();
+
+            if ($reservation) {
+                $dateTime = explode(" ", $reservation->start_at);
+                if (empty($prevDoseDate)) {
+                    $prevDoseDate = $dateTime[0];
+                } else {
+                    $oldDate = new Carbon($prevDoseDate);
+                    $newDate = new Carbon($dateTime[0]);
+                    if ($newDate->gt($oldDate)) {
+                        $prevDoseDate = $dateTime[0];
+                    }
+                }
+            }
+
+            if (!empty($prevDoseDate))
+                return $prevDoseDate." 00:00:00";
+
+            return $prevDoseDate;
+        }
 
         if (($vaccine_id -1)%10 == 2) {
             // 3回目接種のみ、２回目接種日の入力があればそれを使用する
+            $patients = DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->first();
+
             if (!empty($patients->second_dose_date)) {
                 return $patients->second_dose_date;
             }
         } else if (($vaccine_id -1)%10 == 3) {
+            // ４回目接種のみ、３回目接種日の入力があればそれを使用する
+            $patients = DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->first();
+
             if (!empty($patients->third_dose_date)) {
                 return $patients->third_dose_date;
             }
         }
 
         if ($vaccine_id %10 > 1) {
-            foreach ([10,20] as $vaccine) {
+            foreach ([10,20,30] as $vaccine) {
                 $target = ($vaccine_id - 1)%10 + $vaccine;
- 
+
                 $reservations = DB::table('reservations')
                 ->join('frames', 'reservations.frame_id', '=', 'frames.frame_id')
                 ->where('patient_id', $patient_id)
@@ -158,10 +202,8 @@ class MainController extends Controller
         }
 
 
-
         return "";
     }
-
 
     public function afterFiveMonth($date)
     {
@@ -260,13 +302,8 @@ class MainController extends Controller
             } else {
                 $frames->whereRaw("start_at >= date_add('{$prev_dosage}',interval {$dosage_interval} day)");
             }
-
-            if ((floor($vaccine_id/10) == 1 && $site->web_vaccine_14_today_reservation_limit > 0)
-                 || (floor($vaccine_id/10) == 2 && $site->web_vaccine_24_today_reservation_limit > 0)) {
-                $frames->whereRaw('start_at > now()');
-            } else {
-                $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-            }
+            $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
+            
         }
           
         $frames->groupByRaw("DATE_FORMAT(start_at,'%Y%m%d')");
@@ -316,14 +353,6 @@ class MainController extends Controller
         }
         
         $site = DB::table('site')->get()->first();
-        if ($site->web_vaccine_14_today_reservation_limit <= 0
-            && $site->web_vaccine_14_reservation_limit <= 0
-            && $site->web_vaccine_24_today_reservation_limit <= 0
-            && $site->web_vaccine_24_reservation_limit <= 0
-            ) {
-            // 空き枠がない時は新規登録を不可にする
-            return redirect()->back()->withInput()->withErrors('予約枠に空きが無いため新規登録はできません');
-        }
         
         if (env('LOCATION', '') == 'HIGASHINAEBO') {
             $params = [
@@ -387,7 +416,6 @@ class MainController extends Controller
         
         return redirect('/cc_missing', 307)->withInput();
     }
-    
 
     public function logout()
     {
@@ -417,14 +445,8 @@ class MainController extends Controller
         $query->whereColumn('vaccine_count', '>', 'reservation_count');
 
         $site = DB::table('site')->get()->first();
-        // 当日予約が可能な場合は当日の予約可否もカレンダー上に表示する
-        if ((floor($vaccine_id/10) == 1 && $site->web_vaccine_14_today_reservation_limit > 0)
-            || (floor($vaccine_id/10) == 2 && $site->web_vaccine_24_today_reservation_limit > 0)) {
-            $query->whereRaw('start_at > now()');
-        } else {
-            $query->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-        }
-            
+
+        $query->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');    
         $query->orderBy('start_at');
         $frames = $query->get();
     
@@ -796,6 +818,11 @@ class MainController extends Controller
 
         foreach ($reservations as $reservation) {
             $reserved_dose = $reservation->vaccine_id%10;
+            if ($reserved_dose == 9) {
+                $start_dose = 9;
+                break;
+            }
+
             if ($reserved_dose >= $start_dose) {
                 $start_dose = $reserved_dose + 1;
             }
@@ -803,101 +830,99 @@ class MainController extends Controller
 
         $vaccine_list = [];
 
-        for ($target_dose = $start_dose; $target_dose < 5; $target_dose++) {
-       
+        if ($start_dose != 9) {
 
-            // 接種可能なワクチンのリストを作成
-            $vaccines =  DB::table('vaccines')
-                ->whereRaw("mod(vaccine_id,10) = $target_dose")
-                ->get();
 
-            $target_vaccines = [];
+            for ($target_dose = $start_dose; $target_dose < 10; $target_dose++) {
 
-            $reservation_found = false;
-            $prev_dose_avail = false;
-            foreach ($vaccines as $vaccine) {
-                $vaccine_id = $vaccine->vaccine_id;
-                    
-                $target_vaccines[floor($vaccine_id/10)] = $vaccine_id;
 
-                if (!empty($this->getPrevDosageAt($patient_id, $vaccine_id))) {
-                    $prev_dose_avail = true;
-                }
-            }
+                // ２価ワクチンは、1、2回目接種完了が必須条件
+                if ($start_dose < 3 && $target_dose >= 8)
+                    break;
 
-            foreach ($target_vaccines as $maker => $vaccine_id) {
 
-                // 前回の接種日時を確認
-                $prev_dosage = $this->getPrevDosageAt($patient_id, $vaccine_id);
+                // 接種可能なワクチンのリストを作成
+                $vaccines =  DB::table('vaccines')
+                    ->whereRaw("mod(vaccine_id,10) = $target_dose")
+                    ->get();
+
+                $target_vaccines = [];
+
+            
+                foreach ($vaccines as $vaccine) {
+
+                    $vaccine_id = $vaccine->vaccine_id;
                         
-                $frames = DB::table('frames');
-                $frames->where('category_id', $patient->category_id);
-                $frames->where('vaccine_id', $vaccine_id);
-                $frames->whereColumn('vaccine_count', '>', 'reservation_count');
+                    $target_vaccines[floor($vaccine_id/10)] = $vaccine_id;
+                }
 
-                if (!empty($prev_dosage)) {
-                    $dosage_interval = $this->getDosageInterval($vaccine_id);
-                    if ($dosage_interval == 150) {
-                        $frames->whereRaw("start_at >= '".$this->afterFiveMonth($prev_dosage)."'");
-                    } elseif ($dosage_interval == 180) {
-                        $frames->whereRaw("start_at >= '".$this->afterSixMonth($prev_dosage)."'");
-                    } elseif ($dosage_interval == 210) {
-                        $frames->whereRaw("start_at >= '".$this->afterSevenMonth($prev_dosage)."'");
-                    } else {
-                        $frames->whereRaw("start_at >= date_add('{$prev_dosage}',interval {$dosage_interval} day)");
-                    }
-                }
-                if (($maker == 1 && $site->web_vaccine_14_today_reservation_limit > 0) || ($maker == 2 && $site->web_vaccine_24_today_reservation_limit > 0)) {
-                    $frames->whereRaw('start_at > now()');
-                } else {
-                    $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
-                }
-                    
-                // 枠が無い場合は予約不可
-                if ($frames->count() == 0) {
-                    unset($target_vaccines[$maker]);
-                }
-            }
+                foreach ($target_vaccines as $maker => $vaccine_id) {
 
-            foreach ($target_vaccines as $maker => $vaccine_id) {
-                $text = "";
-                
-                if (env('LOCATION', '') == 'HIGASHINAEBO') {
-                    $text .= "コロナワクチン";
-                } elseif ($maker == "1") {
-                    $text .= "ファイザー";
-                } elseif ($maker == "2") {
-                    $text .= "モデルナ";
-                }
-                
-                if ($target_dose == 1) {
-                    $text  .= "１，２";
-                } elseif ($target_dose == 2) {
-                    $text  .= "２";
-                } elseif ($target_dose == 3) {
-                    $text  .= "３";
-                } elseif ($target_dose == 4) {
-                    $text  .= "４";
-                }
-                $text .= "回目を予約する";
-                
-                $skip = false;
-                if ($target_dose == 4) {
-                    // 3回目接種のみ予約制限をチェックする
-                    $skip = false;
-                    if ($patient->category_id == 1) {
-                        if ($maker == 1  && ($site->web_vaccine_14_reservation_limit <= 0 && $site->web_vaccine_14_today_reservation_limit <= 0)) {
-                            $skip = true;
-                        } elseif ($maker == 2  && ($site->web_vaccine_24_reservation_limit <= 0 && $site->web_vaccine_24_today_reservation_limit <= 0)) {
-                            $skip = true;
+                    // 前回の接種日時を確認
+                    $prev_dosage = $this->getPrevDosageAt($patient_id, $vaccine_id);
+                            
+                    $frames = DB::table('frames');
+                    $frames->where('category_id', $patient->category_id);
+                    $frames->where('vaccine_id', $vaccine_id);
+                    $frames->whereColumn('vaccine_count', '>', 'reservation_count');
+
+                    if (!empty($prev_dosage)) {
+                        $dosage_interval = $this->getDosageInterval($vaccine_id);
+                        if ($dosage_interval == 150) {
+                            $frames->whereRaw("start_at >= '".$this->afterFiveMonth($prev_dosage)."'");
+                        } elseif ($dosage_interval == 180) {
+                            $frames->whereRaw("start_at >= '".$this->afterSixMonth($prev_dosage)."'");
+                        } elseif ($dosage_interval == 210) {
+                            $frames->whereRaw("start_at >= '".$this->afterSevenMonth($prev_dosage)."'");
+                        } else {
+                            $frames->whereRaw("start_at >= date_add('{$prev_dosage}',interval {$dosage_interval} day)");
                         }
                     }
+
+                    $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
+                        
+                    // 枠が無い場合は予約不可
+                    if ($frames->count() == 0) {
+                        unset($target_vaccines[$maker]);
+                    }
                 }
-                
-                if (!$skip) {
+
+                foreach ($target_vaccines as $maker => $vaccine_id) {
+                    $text = "";
+                    
+                    if ($maker == "4") {
+                        $text .= "ファイザーオミクロン対応２価";
+                    } elseif ($maker == "5") {
+                        $text .= "モデルナオミクロン対応２価";
+                    } else {
+
+                        if ($maker == "1") {
+                            $text .= "ファイザー";
+                        } elseif ($maker == "2") {
+                            $text .= "モデルナ";
+                        } elseif ($maker == "3") {
+                            $text .= "ノババックス";
+                        } 
+                    
+                        if ($target_dose == 1) {
+                            $text  .= "１，２";
+                        } elseif ($target_dose == 2) {
+                            $text  .= "２";
+                        } elseif ($target_dose == 3) {
+                            $text  .= "３";
+                        } elseif ($target_dose == 4) {
+                            $text  .= "４";
+                        }
+                        $text .= "回目";
+                    }
+
+                    $text .="を予約する";
+                                    
                     $vaccine_list[] = ['vaccine_id'=>$vaccine_id,'text'=>$text];
+
                 }
             }
+
         }
 
         //　キャンセルボタンを表示するか判断する
@@ -914,7 +939,9 @@ class MainController extends Controller
             
         $cancellation_possible = ($ccount > 0?1:0);
          
-        $vaccinations = DB::table('vaccinations')->where('patient_id', $patient_id)->orderBy('vaccine_id')->get();
+        $vaccinations = DB::table('vaccinations')
+            ->join('vaccines', 'vaccinations.vaccine_id', '=', 'vaccines.vaccine_id')
+            ->where('patient_id', $patient_id)->orderBy('vaccinations.vaccine_id')->get();
          
         return view('mypage', [
                'reservations'=>$reservations,
@@ -977,49 +1004,11 @@ class MainController extends Controller
                  
                 $vaccine_id = $frame->vaccine_id;
 
-                $reservation_limit = 0;
-                $today_reservation_limit =0;
-                if (floor($vaccine_id/10) == 1) {
-                    // ファイザー
-                    $reservation_limit = $site->web_vaccine_14_reservation_limit;
-                    $today_reservation_limit = $site->web_vaccine_14_today_reservation_limit;
-                } elseif (floor($vaccine_id/10) == 2) {
-                    // モデルナ
-                    $reservation_limit = $site->web_vaccine_24_reservation_limit;
-                    $today_reservation_limit = $site->web_vaccine_24_today_reservation_limit;
-                }
-
-                // WEB予約は受付制限をチェックする
-                if ($category_id == 1) {
-                    if ($todayReservation) {
-                        if ($today_reservation_limit <= 0) {
-                            return 3;
-                        }
-                    } elseif ($reservation_limit <= 0) {
-                        return 2;
-                    } // 新規予約の受付を停止
-                }
 
                 // 空きフレーム獲得, 枠の予約数+1
                 DB::table('frames')->where('frame_id', $frame_id)->increment('reservation_count');
 
-                // 4回目WEB予約時のみ、全体の予約可能件数を調整
-                if ($category_id == 1 && $vaccine_id%10 == 4) {
-                    if ($todayReservation) {
-                        if (floor($vaccine_id/10) == 1) {
-                            DB::table('site')->where('site_id', $site->site_id)->decrement('web_vaccine_14_today_reservation_limit');
-                        } elseif (floor($vaccine_id/10) == 2) {
-                            DB::table('site')->where('site_id', $site->site_id)->decrement('web_vaccine_24_today_reservation_limit');
-                        }
-                    } else {
-                        if (floor($vaccine_id/10) == 1) {
-                            DB::table('site')->where('site_id', $site->site_id)->decrement('web_vaccine_14_reservation_limit');
-                        } elseif (floor($vaccine_id/10) == 2) {
-                            DB::table('site')->where('site_id', $site->site_id)->decrement('web_vaccine_24_reservation_limit');
-                        }
-                    }
-                }
-
+   
                 // 予約実施
                 $params = [
                     'patient_id' => $patient_id,
@@ -1127,51 +1116,16 @@ class MainController extends Controller
                 $query->lockForUpdate();
                 $cancellations = $query->get();
             
- 
                 if ($cancellations->isEmpty()) {
                     return 2;
                 }
-                $firstTime = "";
-                
-                $pfizerCancel = false;
-                $modernaCancel = false;
 
                 foreach ($cancellations as $cancel) {
-                    // 予約枠の予約数を一つ減らす
-                    if ($cancel->vaccine_id % 10 == 3 && $cancel->category_id == 1) {
-                        if (floor($cancel->vaccine_id/10) == 1) {
-                            $pfizerCancel = true;
-                        } elseif (floor($cancel->vaccine_id/10) == 2) {
-                            $modernaCancel = true;
-                        }
-
-                        $firstTime = $cancel->start_at;
-                    }
-                   
                     DB::table('frames')->where('frame_id', $cancel->frame_id)->lockForUpdate()->decrement('reservation_count');
                     DB::table('reservations')->where('reservation_id', $cancel->reservation_id)->update(['status_code'=>3,'comment'=>'ユーザ操作による取消']);
                 }
     
-                // 予約枠の増加は１回目をキャンセルした場合のみ
-                if ($pfizerCancel || $modernaCancel) {
-                    $dateTime = explode(" ", $firstTime);
-                    if (env('INCREASE_ON_CANCEL', 1)) {
-                        if ($dateTime[0] === date("Y-m-d")) {
-                            // 当日キャンセル
-                            if ($pfizerCancel) {
-                                DB::table('site')->lockForUpdate()->increment('web_vaccine_14_today_reservation_limit');
-                            } elseif ($modernaCancel) {
-                                DB::table('site')->lockForUpdate()->increment('web_vaccine_24_today_reservation_limit');
-                            }
-                        } else {
-                            if ($pfizerCancel) {
-                                DB::table('site')->lockForUpdate()->increment('web_vaccine_14_reservation_limit');
-                            } elseif ($modernaCancel) {
-                                DB::table('site')->lockForUpdate()->increment('web_vaccine_24_reservation_limit');
-                            }
-                        }
-                    }
-                }
+
                 return 1;
             });
         } catch (Throwable $e) {
