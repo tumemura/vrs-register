@@ -907,7 +907,7 @@ class MainController extends Controller
                 foreach ($target_vaccines as $maker => $vaccine_id) {
                     $text = "";
                     
-                    if ($maker == "4") {
+                    if ($maker == "4" || $maker == "6") {
                         $text .= "ファイザーオミクロン対応２価";
                     } elseif ($maker == "5") {
                         $text .= "モデルナオミクロン対応２価";
