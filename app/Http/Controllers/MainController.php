@@ -205,6 +205,19 @@ class MainController extends Controller
         return "";
     }
 
+    public function afterThreeMonth($date)
+    {
+        $current = new DateTime($date);
+        $item = DB::select(DB::raw("select date_add('{$date}',interval 3 month) as three_month"));
+        $next = new DateTime($item[0]->three_month);
+
+        if ($current->format('d') != $next->format('d')) {
+            $next->modify('+1 day');
+        }
+        return $next->format("Y-m-d H:i:s");
+    }
+
+
     public function afterFiveMonth($date)
     {
         $current = new DateTime($date);
@@ -293,7 +306,9 @@ class MainController extends Controller
             }
         } else {
             $dosage_interval = $this->getDosageInterval($vaccine_id);
-            if ($dosage_interval == 150) {
+            if ($dosage_interval == 90) {
+                $frames->whereRaw("start_at >= '".$this->afterThreeMonth($prev_dosage)."'");
+            } elseif ($dosage_interval == 150) {
                 $frames->whereRaw("start_at >= '".$this->afterFiveMonth($prev_dosage)."'");
             } elseif ($dosage_interval == 180) {
                 $frames->whereRaw("start_at >= '".$this->afterSixMonth($prev_dosage)."'");
@@ -868,7 +883,9 @@ class MainController extends Controller
 
                     if (!empty($prev_dosage)) {
                         $dosage_interval = $this->getDosageInterval($vaccine_id);
-                        if ($dosage_interval == 150) {
+                        if ($dosage_interval == 90) {
+                            $frames->whereRaw("start_at >= '".$this->afterThreeMonth($prev_dosage)."'");
+                        } elseif ($dosage_interval == 150) {
                             $frames->whereRaw("start_at >= '".$this->afterFiveMonth($prev_dosage)."'");
                         } elseif ($dosage_interval == 180) {
                             $frames->whereRaw("start_at >= '".$this->afterSixMonth($prev_dosage)."'");
