@@ -103,7 +103,6 @@ function doseChanged(e) {
             </div>
         </div>
     </div>
-    @if(env('ACCEPT_THIRD_DOSE') == 'true')
     <div class="form-row"> 
         <div class="form-group col-12">
             <label for="first_name">今回の接種　</label>
@@ -117,7 +116,6 @@ function doseChanged(e) {
             </div>
         </div> 
     </div>
-    @endif
     <div class="form-row" id="third-dose-row" style="display:flex"> 
         <div class="form-group col-12">
             <label for="first_name">コロナワクチン３回目接種日&nbsp;<span class="badge badge-danger">必須</span></label>
