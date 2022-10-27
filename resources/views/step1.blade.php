@@ -34,13 +34,13 @@
 <div class="row justify-content-center mt-5">
 	<div class="d-flex flex-column">
 		<div class="mt-5">
-			<button class="btn btn-success long-btn" id="back-btn" type="button" onclick="document.search_form.submit();">1、２、３回目を当院で接種された方はこちら</button>
+			<button class="btn btn-success long-btn" type="button" onclick="document.search_form.submit();">コロナワクチンを全て当院で接種されたかた</button>
 		</div>
 		<div class="mt-5">
-			<button class="btn btn-success" id="back-btn" type="button" onclick="document.new_form.submit();">他院（集団接種も含む）で接種された方はこちら</button>
+			<button class="btn btn-success long-btn" type="button" onclick="document.new_form.submit();">他院(集団接種も含む)で接種されたかた</button>
 		</div>
 		<div class="mt-5">
-			<button class="btn btn-success" id="back-btn" type="button" onclick="location.href='/';">接種券番号や生年月日を再入力する場合はこちら</button>
+			<button class="btn btn-success long-btn" type="button" onclick="location.href='/';">接種券番号や生年月日を再入力する場合</button>
 		</div>
 			<div class="mt-5">
 		</div>
