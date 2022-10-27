@@ -57,8 +57,10 @@
 	<tr><td>メールアドレス</td><td>{{$email}}</td></tr>
     @if ($second_dose_date)
         <tr><td>２回目接種日</td><td>{{$second_dose_date}}</td></tr>
-    @else
+    @elseif ($third_dose_date)
         <tr><td>３回目接種日</td><td>{{$third_dose_date}}</td></tr>
+    @elseif ($fourth_dose_date)
+        <tr><td>４回目接種日</td><td>{{$fourth_dose_date}}</td></tr>
     @endif
 </tbody>
 </table>
@@ -81,6 +83,7 @@
 <input type="hidden" name="office" value="{{$office}}">
 <input type="hidden" name="second_dose_date" value="{{$second_dose_date}}">
 <input type="hidden" name="third_dose_date" value="{{$third_dose_date}}">
+<input type="hidden" name="fourth_dose_date" value="{{$fourth_dose_date}}">
 <input type="hidden" name="category_id" value="{{$category_id}}">
 </form>
 </div>
@@ -98,8 +101,8 @@
 <input type="hidden" name="office" value="{{$office}}">
 <input type="hidden" name="second_dose_date" value="{{$second_dose_date}}">
 <input type="hidden" name="third_dose_date" value="{{$third_dose_date}}">
+<input type="hidden" name="fourth_dose_date" value="{{$fourth_dose_date}}">
 <input type="hidden" name="category_id" value="{{$category_id}}">
 </form>
-@csrf
 @endsection
 
