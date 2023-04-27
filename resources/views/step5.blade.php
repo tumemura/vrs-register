@@ -99,6 +99,7 @@ $(function() {
 <input type="hidden" name="second_dose_date" value="{{$second_dose_date}}">
 <input type="hidden" name="third_dose_date" value="{{$third_dose_date}}">
 <input type="hidden" name="fourth_dose_date" value="{{$fourth_dose_date}}">
+<input type="hidden" name="fifth_dose_date" value="{{$fifth_dose_date}}">
 </form>
 </div>
 
@@ -115,6 +116,7 @@ $(function() {
 <input type="hidden" name="second_dose_date" value="{{$second_dose_date}}">
 <input type="hidden" name="third_dose_date" value="{{$third_dose_date}}">
 <input type="hidden" name="fourth_dose_date" value="{{$fourth_dose_date}}">
+<input type="hidden" name="fifth_dose_date" value="{{$fifth_dose_date}}">
 </form>
 
 @endsection

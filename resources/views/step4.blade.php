@@ -26,6 +26,7 @@
                 form.classList.add('was-validated');
             },false);
         });
+        document.getElementById('dose6').addEventListener('change', doseChanged);
         document.getElementById('dose5').addEventListener('change', doseChanged);
         document.getElementById('dose4').addEventListener('change', doseChanged);
         document.getElementById('dose3').addEventListener('change', doseChanged);
@@ -35,8 +36,10 @@
             target = document.getElementById('dose3');
         @elseif (!empty($third_dose_date))
             target = document.getElementById('dose4');
-        @else
+        @elseif (!empty($fourth_dose_date))
             target = document.getElementById('dose5');
+        @else
+            target = document.getElementById('dose6');
         @endif
         target.checked = true;
         target.dispatchEvent(new Event('change'));
@@ -46,8 +49,24 @@
 
 function doseChanged(e) {
     if (e.currentTarget.checked) {
+        if (e.currentTarget.value == 6) {
+            document.getElementById('fifth_dose_row').style.display="flex";
+            document.getElementById('fifth_dose_date').required = true;
 
-        if (e.currentTarget.value == 5) {
+            document.getElementById('fourth_dose_row').style.display="none";
+            document.getElementById('fourth_dose_date').required = true;
+
+            document.getElementById('third_dose_row').style.display="none";
+            document.getElementById('third_dose_date').required = false;
+            
+            document.getElementById('second_dose_row').style.display="none";
+            document.getElementById('second_dose_date').required = false;
+
+        } else if (e.currentTarget.value == 5) {
+    
+            document.getElementById('fifth_dose_row').style.display="none";
+            document.getElementById('fifth_dose_date').required = true;
+
             document.getElementById('fourth_dose_row').style.display="flex";
             document.getElementById('fourth_dose_date').required = true;
 
@@ -59,9 +78,11 @@ function doseChanged(e) {
 
         } else if (e.currentTarget.value == 4) {
 
+            document.getElementById('fifth_dose_row').style.display="none";
+            document.getElementById('fifth_dose_date').required = true;
+
             document.getElementById('fourth_dose_row').style.display="none";
             document.getElementById('fourth_dose_date').required = false;
-
 
             document.getElementById('third_dose_row').style.display="flex";
             document.getElementById('third_dose_date').required = true;
@@ -72,6 +93,9 @@ function doseChanged(e) {
 
         } else {
 
+            document.getElementById('fifth_dose_row').style.display="none";
+            document.getElementById('fifth_dose_date').required = true;
+
             document.getElementById('fourth_dose_row').style.display="none";
             document.getElementById('fourth_dose_date').required = false;
 
@@ -81,6 +105,7 @@ function doseChanged(e) {
             document.getElementById('third_dose_row').style.display="none";
             document.getElementById('third_dose_date').required = false;
         }
+        document.getElementById('fifth_dose_date').value = "";
         document.getElementById('fourth_dose_date').value = "";
         document.getElementById('second_dose_date').value = "";
         document.getElementById('third_dose_date').value = "";
@@ -95,7 +120,7 @@ function doseChanged(e) {
         transform: scale(2);
     }
 
-    #second_dose_row, #third_dose_row, #fourth_dose_row {
+    #second_dose_row, #third_dose_row, #fourth_dose_row, #fifth_dose_row {
         display:none;
         flex-direction: column;
     }
@@ -137,6 +162,10 @@ function doseChanged(e) {
         <div class="form-group col-12">
             <label for="first_name">今回の接種　</label>
             <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="dose" id="dose6" value="6">
+                <label class="form-check-label" for="inlineRadio1">６回目</label>
+            </div>
+            <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="dose" id="dose5" value="5">
                 <label class="form-check-label" for="inlineRadio1">５回目</label>
             </div>
@@ -150,6 +179,20 @@ function doseChanged(e) {
             </div>
         </div> 
     </div>
+    <div id="fifth_dose_row">
+        <div class="row"> 
+            <div class="form-group col-12">
+                <label for="first_name">コロナワクチン5回目接種日&nbsp;<span class="badge badge-danger">必須</span></label>
+                <input class="form-control" type="text" name="fifth_dose_date" id="fifth_dose_date" value="{{$fifth_dose_date}}" inputmode="numeric" pattern="\d{8}" placeholder="20210519" required>
+                <span class="small">6回目接種券に記載の5回目接種日を半角西暦８桁で入力</span><br>
+                <span class="small">例：5回目接種日(2022年07月22日)->20220722と入力</span>
+                <div class="invalid-feedback">5回目接種日を半角西暦８桁で入力してください</div>
+            </div>
+        </div>
+        <div class="row">
+            <img src="{{ asset('/img/fifth_dose_date.png')}}" id="fourth-dose-image" style="width:100%; height:auto;">
+        </div>
+    </div>
     <div id="fourth_dose_row">
         <div class="row"> 
             <div class="form-group col-12">
@@ -161,7 +204,7 @@ function doseChanged(e) {
             </div>
         </div>
         <div class="row">
-            <img src="{{ asset('/img/fourth_dose_date.png')}}" id="third-dose-image" style="width:100%; height:auto;">
+            <img src="{{ asset('/img/fourth_dose_date.png')}}" id="fourth-dose-image" style="width:100%; height:auto;">
         </div>
     </div>
     <div id="third_dose_row">
