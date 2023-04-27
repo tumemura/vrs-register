@@ -54,7 +54,7 @@ function doseChanged(e) {
             document.getElementById('fifth_dose_date').required = true;
 
             document.getElementById('fourth_dose_row').style.display="none";
-            document.getElementById('fourth_dose_date').required = true;
+            document.getElementById('fourth_dose_date').required = false;
 
             document.getElementById('third_dose_row').style.display="none";
             document.getElementById('third_dose_date').required = false;
@@ -65,7 +65,7 @@ function doseChanged(e) {
         } else if (e.currentTarget.value == 5) {
     
             document.getElementById('fifth_dose_row').style.display="none";
-            document.getElementById('fifth_dose_date').required = true;
+            document.getElementById('fifth_dose_date').required = false;
 
             document.getElementById('fourth_dose_row').style.display="flex";
             document.getElementById('fourth_dose_date').required = true;
@@ -79,7 +79,7 @@ function doseChanged(e) {
         } else if (e.currentTarget.value == 4) {
 
             document.getElementById('fifth_dose_row').style.display="none";
-            document.getElementById('fifth_dose_date').required = true;
+            document.getElementById('fifth_dose_date').required = false;
 
             document.getElementById('fourth_dose_row').style.display="none";
             document.getElementById('fourth_dose_date').required = false;
@@ -94,7 +94,7 @@ function doseChanged(e) {
         } else {
 
             document.getElementById('fifth_dose_row').style.display="none";
-            document.getElementById('fifth_dose_date').required = true;
+            document.getElementById('fifth_dose_date').required = false;
 
             document.getElementById('fourth_dose_row').style.display="none";
             document.getElementById('fourth_dose_date').required = false;
