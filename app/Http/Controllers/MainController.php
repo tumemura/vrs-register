@@ -875,7 +875,7 @@ class MainController extends Controller
 
         $vaccine_list = [];
 
-        if ($start_dose != 9) {
+
 
 
             for ($target_dose = $start_dose; $target_dose < 10; $target_dose++) {
@@ -970,7 +970,7 @@ class MainController extends Controller
                 }
             }
 
-        }
+        
 
         //　キャンセルボタンを表示するか判断する
         $ccount = DB::table('reservations')
@@ -1035,7 +1035,7 @@ class MainController extends Controller
                     ->where('frames.vaccine_id', $frame->vaccine_id)
                     ->get();
                 
-                if (!$reservations->isEmpty()) {
+                if (!$reservations->isEmpty() && $frame->vaccine_id%10 != 9) {
                     return 5; // 同じワクチンを予約済み
                 }
                 
