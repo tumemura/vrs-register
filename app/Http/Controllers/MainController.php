@@ -137,6 +137,12 @@ class MainController extends Controller
             if (!empty($patients->third_dose_date)) {
                 $prevDoseDate =  explode(" ",$patients->third_dose_date)[0];
             }
+            if (!empty($patients->fourth_dose_date)) {
+                $prevDoseDate =  explode(" ",$patients->fourth_dose_date)[0];
+            }
+            if (!empty($patients->fifth_dose_date)) {
+                $prevDoseDate =  explode(" ",$patients->fifth_dose_date)[0];
+            }
     
             $reservation = DB::table('reservations')
                 ->join('frames', 'reservations.frame_id', '=', 'frames.frame_id')
@@ -166,21 +172,23 @@ class MainController extends Controller
 
         if (($vaccine_id -1)%10 == 2) {
             // 3回目接種のみ、２回目接種日の入力があればそれを使用する
-            $patients = DB::table('patients')
-                ->where('patient_id', $patient_id)
-                ->first();
 
             if (!empty($patients->second_dose_date)) {
                 return $patients->second_dose_date;
             }
         } else if (($vaccine_id -1)%10 == 3) {
             // ４回目接種のみ、３回目接種日の入力があればそれを使用する
-            $patients = DB::table('patients')
-                ->where('patient_id', $patient_id)
-                ->first();
 
             if (!empty($patients->third_dose_date)) {
                 return $patients->third_dose_date;
+            }
+        } else if (($vaccine_id -1)%10 == 4) {
+            if (!empty($patients->fourth_dose_date)) {
+                return $patients->fourth_dose_date;
+            }
+        } else if (($vaccine_id -1)%10 == 5) {
+            if (!empty($patients->fifth_dose_date)) {
+                return $patients->fifth_dose_date;
             }
         }
 
@@ -257,7 +265,17 @@ class MainController extends Controller
 
     public function saveDoseDate(Request $request) {
         $patient_id = Session::get('patient_id');
-        if ($request->third_dose_date) {
+        if ($request->fifth_dose_date) {
+            DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->update(['fifth_dose_date'=>$request->fifth_dose_date]);
+            return redirect('/calendar/'.$request->vaccine_id);
+        } else if ($request->fourth_dose_date) {
+            DB::table('patients')
+                ->where('patient_id', $patient_id)
+                ->update(['fourth_dose_date'=>$request->fourth_dose_date]);
+            return redirect('/calendar/'.$request->vaccine_id);
+        } else if ($request->third_dose_date) {
             DB::table('patients')
                 ->where('patient_id', $patient_id)
                 ->update(['third_dose_date'=>$request->third_dose_date]);
@@ -705,7 +723,9 @@ class MainController extends Controller
             'category_id'=>$request->category_id,
             'office'=>$request->office,
             'second_dose_date'=>$request->second_dose_date,
-            'third_dose_date'=>$request->third_dose_date
+            'third_dose_date'=>$request->third_dose_date,
+            'fourth_dose_date'=>$request->fourth_dose_date,
+            'fifth_dose_date'=>$request->fifth_dose_date
         ];
         return view('step4', $params);
     }
@@ -720,6 +740,8 @@ class MainController extends Controller
             'last_name'=>$request->last_name,
             'second_dose_date'=>$request->second_dose_date,
             'third_dose_date'=>$request->third_dose_date,
+            'fourth_dose_date'=>$request->fourth_dose_date,
+            'fifth_dose_date'=>$request->fifth_dose_date,
             'office'=>$request->office,
             'category_id'=>$request->category_id,
         ];
@@ -738,6 +760,8 @@ class MainController extends Controller
             'email'=>$request->email,
             'second_dose_date'=>$request->second_dose_date,
             'third_dose_date'=>$request->third_dose_date,
+            'fourth_dose_date'=>$request->fourth_dose_date,
+            'fifth_dose_date'=>$request->fifth_dose_date,
             'office'=>$request->office,
             'category_id'=>$request->category_id,
         ];
@@ -780,6 +804,8 @@ class MainController extends Controller
             'password' => $request->date_of_birth,
             'second_dose_date'=> $request->second_dose_date,
             'third_dose_date'=> $request->third_dose_date,
+            'fourth_dose_date'=> $request->fourth_dose_date,
+            'fifth_dose_date'=> $request->fifth_dose_date,
             'comment'=>$office
         ];
         
@@ -823,7 +849,11 @@ class MainController extends Controller
         
         // 2回目接種日が入力されているなら３回目接種から
         // それ以外は１回目接種から
-        if (!empty($patient->third_dose_date)) {
+        if (!empty($patient->fifth_dose_date)) {
+            $start_dose = 6;
+        } else if (!empty($patient->fourth_dose_date)) {
+            $start_dose = 5;
+        } else if (!empty($patient->third_dose_date)) {
             $start_dose = 4;
         } else if (!empty($patient->second_dose_date)) {
             $start_dose = 3;
@@ -845,7 +875,7 @@ class MainController extends Controller
 
         $vaccine_list = [];
 
-        if ($start_dose != 9) {
+
 
 
             for ($target_dose = $start_dose; $target_dose < 10; $target_dose++) {
@@ -940,7 +970,7 @@ class MainController extends Controller
                 }
             }
 
-        }
+        
 
         //　キャンセルボタンを表示するか判断する
         $ccount = DB::table('reservations')
@@ -1005,7 +1035,7 @@ class MainController extends Controller
                     ->where('frames.vaccine_id', $frame->vaccine_id)
                     ->get();
                 
-                if (!$reservations->isEmpty()) {
+                if (!$reservations->isEmpty() && $frame->vaccine_id%10 != 9) {
                     return 5; // 同じワクチンを予約済み
                 }
                 
