@@ -881,9 +881,11 @@ class MainController extends Controller
             for ($target_dose = $start_dose; $target_dose < 10; $target_dose++) {
 
 
+                //  2023/8/21 二価ワクチンが初回接種に適用可能になったため、ロジックをコメントアウト
+                //
                 // ２価ワクチンは、1、2回目接種完了が必須条件
-                if ($start_dose < 3 && $target_dose >= 8)
-                    break;
+                // if ($start_dose < 3 && $target_dose >= 8)
+                //     break;
 
 
                 // 接種可能なワクチンのリストを作成

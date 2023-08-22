@@ -73,7 +73,7 @@
                     <div class="invalid-feedback">３回目接種日を半角西暦８桁で入力してください</div>
                 </div>
             </div>
-            @else if ($vaccine_id %10 == 3)
+            @elseif ($vaccine_id %10 == 3)
             <div class="row" id="second-dose-row"> 
                 <div class="form-group col-12">
                     <label for="first_name">コロナワクチン２回目接種日&nbsp;<span class="badge badge-danger">必須</span></label>
