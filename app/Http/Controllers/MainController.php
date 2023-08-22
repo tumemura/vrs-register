@@ -310,7 +310,7 @@ class MainController extends Controller
         $site = DB::table('site')->get()->first();
 
         if (empty($prev_dosage)) {
-            if ($vaccine_id % 10 == 1) {
+            if ($vaccine_id % 10 == 1 || $vaccine_id % 10 == 9 ) {
                 $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
             } else {
                 if ($vaccine_id % 10 == 2) {
