@@ -941,6 +941,8 @@ class MainController extends Controller
                     
                     if ($maker == "4" || $maker == "6") {
                         $text .= "ファイザーオミクロン対応２価";
+                    } elseif ($maker == "7") {
+                        $text .= "ファイザーオミクロン株XBB1.5対応1価";
                     } elseif ($maker == "5") {
                         $text .= "モデルナオミクロン対応２価";
                     } else {
