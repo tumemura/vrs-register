@@ -310,7 +310,7 @@ class MainController extends Controller
         $site = DB::table('site')->get()->first();
 
         if (empty($prev_dosage)) {
-            if ($vaccine_id % 10 == 1) {
+            if ($vaccine_id % 10 == 1 || $vaccine_id % 10 == 9 ) {
                 $frames->whereRaw('start_at > DATE_ADD(CURRENT_DATE,interval 1 day)');
             } else {
                 if ($vaccine_id % 10 == 2) {
@@ -881,9 +881,11 @@ class MainController extends Controller
             for ($target_dose = $start_dose; $target_dose < 10; $target_dose++) {
 
 
+                //  2023/8/21 二価ワクチンが初回接種に適用可能になったため、ロジックをコメントアウト
+                //
                 // ２価ワクチンは、1、2回目接種完了が必須条件
-                if ($start_dose < 3 && $target_dose >= 8)
-                    break;
+                // if ($start_dose < 3 && $target_dose >= 8)
+                //     break;
 
 
                 // 接種可能なワクチンのリストを作成
@@ -939,6 +941,8 @@ class MainController extends Controller
                     
                     if ($maker == "4" || $maker == "6") {
                         $text .= "ファイザーオミクロン対応２価";
+                    } elseif ($maker == "7") {
+                        $text .= "ファイザーオミクロン株XBB1.5対応1価";
                     } elseif ($maker == "5") {
                         $text .= "モデルナオミクロン対応２価";
                     } else {
